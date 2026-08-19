@@ -3,8 +3,6 @@
 ## SFT + GRPO Training with CityRefer Spatial Priors on CityNav
 
 **Course:** CS776 — Deep Learning for Computer Vision | IIT Kanpur
-**Group 1:** Kunal Jolly Saxena, Shrikant Sharma, Seetaramayya Lavu, Ankit Kumar, Harsh Sanjay Pandey, Anuj Singh, Shikha Yadav
-
 ---
 
 ## What This Project Does
