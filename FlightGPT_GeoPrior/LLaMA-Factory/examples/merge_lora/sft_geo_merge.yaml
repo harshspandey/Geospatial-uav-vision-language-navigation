@@ -1,0 +1,14 @@
+### Model
+model_name_or_path: /home/priyanka/GROUP_1_DLCV/Flight_GPT/FlightGPT_GeoPrior/model_weight
+trust_remote_code: true
+
+### Method
+stage: sft
+do_train: false
+finetuning_type: lora
+adapter_name_or_path: /home/priyanka/GROUP_1_DLCV/Flight_GPT/FlightGPT_GeoPrior/saves/sft_geo
+
+### Export
+export_dir: /home/priyanka/GROUP_1_DLCV/Flight_GPT/FlightGPT_GeoPrior/saves/sft_geo_merged
+export_hub_model_id: ~
+export_legacy_format: false

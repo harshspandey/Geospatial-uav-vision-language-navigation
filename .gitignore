@@ -1,0 +1,238 @@
+# =============================================================================
+# Geospatial UAV Vision-Language Navigation — .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+wheels/
+*.whl
+pip-wheel-metadata/
+share/python-wheels/
+.installed.cfg
+MANIFEST
+.eggs/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.python-version
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+pytestdebug.log
+
+# mypy / pyright / ruff
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyright/
+.ruff_cache/
+
+# -----------------------------------------------------------------------------
+# Jupyter Notebooks
+# -----------------------------------------------------------------------------
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# -----------------------------------------------------------------------------
+# Deep Learning / ML Artifacts
+# -----------------------------------------------------------------------------
+# Model weights & checkpoints
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.h5
+*.hdf5
+*.npz
+*.npy
+checkpoints/
+runs/
+output/
+outputs/
+lightning_logs/
+wandb/
+mlruns/
+
+# TensorBoard logs
+logs/
+tensorboard_logs/
+tb_logs/
+events.out.tfevents.*
+
+# ONNX / TensorRT
+*.onnx
+*.trt
+*.engine
+*.plan
+
+# Flash attention build artifacts
+*.whl
+
+# -----------------------------------------------------------------------------
+# Data & Datasets (large files / binaries)
+# -----------------------------------------------------------------------------
+# Raw / processed data directories (keep only metadata/examples)
+FlightGPT_GeoPrior/data/citynav/
+FlightGPT_GeoPrior/data/cityrefer/
+FlightGPT_GeoPrior/data/training_data/
+
+# Common data file formats
+*.csv
+*.tsv
+*.parquet
+*.feather
+*.arrow
+*.pkl
+*.pickle
+*.lmdb
+*.db
+*.sqlite
+*.sqlite3
+
+# Video / geospatial rasters
+*.mp4
+*.avi
+*.mkv
+*.tif
+*.tiff
+*.geotiff
+*.nc
+
+# JSON Lines data dumps (keep config / small examples)
+FlightGPT_GeoPrior/open-r1-multimodal/data_jsonl/
+
+# -----------------------------------------------------------------------------
+# LLaMA-Factory / training outputs
+# -----------------------------------------------------------------------------
+FlightGPT_GeoPrior/LLaMA-Factory/saves/
+FlightGPT_GeoPrior/LLaMA-Factory/output/
+FlightGPT_GeoPrior/LLaMA-Factory/cache/
+
+# -----------------------------------------------------------------------------
+# Secrets & API keys
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+secrets.yaml
+secrets.json
+*_key.txt
+*_secret.txt
+openai_key*
+api_key*
+
+# -----------------------------------------------------------------------------
+# LaTeX build artifacts
+# -----------------------------------------------------------------------------
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.xdv
+_minted-*/
+auto/
+
+# -----------------------------------------------------------------------------
+# OS & editor
+# -----------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# JetBrains IDEs
+.idea/
+*.iml
+
+# Vim / Emacs
+*.swp
+*.swo
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+.elc
+
+# -----------------------------------------------------------------------------
+# Shell / Slurm / SBATCH job outputs
+# -----------------------------------------------------------------------------
+*.log
+slurm-*.out
+slurm-*.err
+*.sh.o*
+*.sh.e*
+
+# -----------------------------------------------------------------------------
+# Miscellaneous
+# -----------------------------------------------------------------------------
+tmp/
+temp/
+scratch/
+.scratch/
+*.tmp
+*.bak
+*.orig
+core

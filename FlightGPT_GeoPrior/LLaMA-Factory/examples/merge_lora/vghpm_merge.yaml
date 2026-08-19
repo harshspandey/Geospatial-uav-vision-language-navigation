@@ -1,0 +1,11 @@
+### model
+model_name_or_path: /home/priyanka/GROUP_1_DLCV/Flight_GPT/VG_HPM/model_weight
+adapter_name_or_path: /home/priyanka/GROUP_1_DLCV/Flight_GPT/VG_HPM/saves/vghpm/lora/sft_v4
+template: qwen2_vl
+finetuning_type: lora
+trust_remote_code: true
+
+### export
+export_dir: /home/priyanka/GROUP_1_DLCV/Flight_GPT/VG_HPM/saves/vghpm/merged_v4
+export_size: 4
+export_legacy_format: false
