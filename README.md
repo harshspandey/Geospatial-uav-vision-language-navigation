@@ -1,360 +1,144 @@
-
 # Geographic Prior Injection for UAV Vision-Language Navigation
-## SFT + GRPO Training with CityRefer Spatial Priors on CityNav
 
-**Course:** CS776 — Deep Learning for Computer Vision | IIT Kanpur
----
+This repository contains a course project extension of FlightGPT for CityNav navigation. The main idea is simple: inject CityRefer landmark coordinates into the prompt so the model treats them as a spatial hint rather than as the final target location.
 
-## What This Project Does
+The implementation lives in `FlightGPT_GeoPrior/`. The top level also includes the final report and sample map figures.
 
-We extend FlightGPT (EMNLP 2025) by injecting CityRefer landmark coordinates into
-training prompts. The model is trained (SFT + GRPO) to use landmark pixel coordinates
-as a search reference rather than a final answer, improving navigation precision.
+## Overview
 
-**Results (5311 test episodes):**
+- Base system: FlightGPT
+- Task: UAV vision-language navigation on CityNav
+- Method: supervised fine-tuning (SFT) followed by GRPO
+- Geographic prior source: `data/cityrefer/objects.json`
+- Prompt behavior: inject landmark pixel coordinates before the image input
 
-| Split   | SR     | OSR    | NE      | SPL    |
-|---------|--------|--------|---------|--------|
-| Easy    | 22.99% | 42.41% | 55.20m  | 20.28% |
-| Medium  | 19.93% | 35.47% | 69.25m  | 18.39% |
-| Hard    | 22.56% | 34.27% | 77.68m  | 21.30% |
-| Overall | 21.90% | 37.86% | 66.14m  | 19.97% |
+Example prior:
 
-Baseline (FlightGPT GRPO, no prior): SR=21.20%, NE=76.20m
-
----
-
-## How Geographic Prior Injection Works
-
-For every training and evaluation episode:
-
-1. Extract landmark name: ep.description_landmarks -> ['Leslie Road']
-2. Look up in CityRefer database: data/cityrefer/objects.json
-3. Convert GPS to pixel: px = (world - top_left) / px_size
-4. Inject into prompt before the image tag:
-   [Geographic Prior] 'Leslie Road' is at map pixel [1054, 228].
-   The target building is located NEAR this landmark -
-   search within ~400 pixels of this location.
-   <image>
-5. GRPO reward: predicting [1054, 228] gives Rgoal~0.
-   Predicting true target gives Rgoal=1.
-   Model learns: prior = search region, not the answer.
-
-Coverage: 90% of SFT samples, 94% of GRPO samples have a prior.
-
----
-
-## Project File Structure
-
+```text
+[Geographic Prior] 'Leslie Road' is at map pixel [1054, 228].
+The target building is located NEAR this landmark - search within ~400 pixels of this location.
 ```
+
+The reward shaping in GRPO is designed so that predicting the landmark itself is not enough; the model must still localize the actual target.
+
+## Results
+
+Evaluation on 5311 test episodes:
+
+| Split | SR | OSR | NE | SPL |
+|---|---:|---:|---:|---:|
+| Easy | 22.99% | 42.41% | 55.20 m | 20.28% |
+| Medium | 19.93% | 35.47% | 69.25 m | 18.39% |
+| Hard | 22.56% | 34.27% | 77.68 m | 21.30% |
+| Overall | 21.90% | 37.86% | 66.14 m | 19.97% |
+
+Baseline reference from the project notes: FlightGPT GRPO without geographic prior achieved `SR=21.20%` and `NE=76.20 m`.
+
+## Repository Layout
+
+```text
+.
+├── FlightGPT_GeoPrior/          # Main codebase for training, evaluation, and demo
+├── README.md                    # This overview
+├── VG_HPM_IEEE_Report_Final.pdf # Final report
+├── VG_HPM_IEEE_Report_Final.tex # Report source
+├── landmark_map_cropped.jpg     # Figure asset
+└── plain_map_cropped.jpg        # Figure asset
+```
+
+Inside `FlightGPT_GeoPrior/`:
+
+```text
 FlightGPT_GeoPrior/
-├── run_sft_geo.sh                   <- Step 2: Launch SFT training
-├── merge_sft_geo.sh                 <- Step 3: Merge LoRA into full model
-├── run_grpo_geo.sh                  <- Step 4: Launch GRPO training
-├── eval_geo_trained.py              <- Step 6: Evaluate trained model
-├── eval.py                          <- Same eval with geo prior (baseline use)
-├── live_demo.py                     <- Live inference demo (6 random episodes)
-├── navgym/agents/
-│   ├── CityNavAgent.py              <- MODIFIED: geographic_prior parameter added
-│   ├── SubgoalTracker.py            <- NEW: passive subgoal tracking
-│   └── VSV.py                       <- NEW: CLIP visual verification (passive)
+├── run_sft_geo.sh
+├── merge_sft_geo.sh
+├── run_grpo_geo.sh
+├── eval_geo_trained.py
+├── eval.py
+├── live_demo.py
+├── requirements.txt
 ├── data/
-│   ├── cityrefer/objects.json       <- Landmark GPS database (22MB, 34 blocks)
-│   ├── citynav/                     <- All CityNav JSON splits
-│   └── training_data/
-│       ├── citynav_rl_data_geo.json <- GRPO training data (4758 samples)
-│       └── map_params.json          <- Coordinate params for all 29 blocks
-├── LLaMA-Factory/
-│   ├── data/
-│   │   ├── vghpm_sft_v4_geo.json   <- SFT training data (4757 samples)
-│   │   └── dataset_info.json       <- MODIFIED: geo dataset registered
-│   └── examples/
-│       ├── train_lora/sft_geo.yaml
-│       └── merge_lora/sft_geo_merge.yaml
-├── open-r1-multimodal/src/open_r1/
-│   ├── grpo_jsonl_citynav_geo.py   <- MODIFIED: geo prior in GRPO loop
-│   └── utils/                      <- Required utilities
-├── model_weight/                   <- FlightGPT GRPO base model (16GB)
-├── R1PhotoData/                    <- Satellite map images for evaluation (28GB)
-└── saves/
-    ├── sft_geo/                    <- Created after Step 2 (LoRA adapter)
-    ├── sft_geo_merged/             <- Created after Step 3 (full model ~16GB)
-    └── grpo_geo/                   <- Created after Step 4 (final trained model)
+├── navgym/
+├── open-r1-multimodal/
+└── LLaMA-Factory/
 ```
 
----
+## What Is Included
 
-## PART 1 — Replicating on a Pre-Configured Server
+- Training and evaluation code for the geo-prior variant
+- CityNav split metadata under `FlightGPT_GeoPrior/data/citynav/`
+- Geo-prior RL data at `FlightGPT_GeoPrior/data/training_data/citynav_rl_data_geo.json`
+- CityRefer object metadata at `FlightGPT_GeoPrior/data/cityrefer/objects.json`
+- LLaMA-Factory configs for SFT and LoRA merge
+- GRPO training entrypoint for the geo-prior setup
 
-All data, code, dependencies, and model weights are assumed to be already set up on the server.
-You only need to run the commands below in order.
+## What Is Not Fully Self-Contained
 
-**Server Details:**
-- IP: `<SERVER_IP>`
-- User: `<USERNAME>`
-- GPU: NVIDIA RTX 4090 24GB (or equivalent with ≥24GB VRAM)
-- Conda environment: `dlcv_vghpm`
-- Working directory: `<PATH_TO>/FlightGPT_GeoPrior/`
+This repository is not yet fully plug-and-play on a fresh machine.
 
-### Step 1 — Connect to Server
+- Large artifacts such as `model_weight/`, `R1PhotoData/`, and generated `saves/` directories are expected by the scripts but are not checked into the repo.
+- Several scripts and configs still contain hardcoded absolute paths from the original training server.
+- Some instructions assume a pre-configured Conda environment and a single-GPU server with at least 24 GB VRAM.
+
+If you want public reproducibility, this is the main gap to fix next.
+
+## Environment
+
+The checked-in environment file is `FlightGPT_GeoPrior/requirements.txt`. The current stack in the repo is centered around:
+
+- Python 3.11
+- `torch==2.6.0`
+- `transformers==4.50.0`
+- `trl==0.17.0`
+- FlashAttention 2 wheel for CUDA 12 / Torch 2.6
+
+Suggested setup:
 
 ```bash
-ssh <USERNAME>@<SERVER_IP>
-conda activate dlcv_vghpm
-cd <PATH_TO>/FlightGPT_GeoPrior/
-```
-
-### Step 2 — SFT Training (approximately 4 hours)
-
-Trains a LoRA adapter (rank 64) on top of the FlightGPT GRPO base model using
-4757 training samples enriched with geographic priors.
-
-Open a screen session so it keeps running after you disconnect:
-
-```bash
-screen -S sft_geo
-conda activate dlcv_vghpm
-cd <PATH_TO>/FlightGPT_GeoPrior/
-bash run_sft_geo.sh 2>&1 | tee logs/sft_geo.log
-```
-
-Detach from screen: press `Ctrl+A` then `D`
-
-Monitor progress:
-
-```bash
-tail -f logs/sft_geo.log
-# Training is working when you see: {'loss': X.XX, 'grad_norm': ...}
-```
-
-Expected output: `saves/sft_geo/` (LoRA adapter checkpoint)
-
-> **IMPORTANT:** Do not start Step 3 until Step 2 finishes completely.
-> Check completion: `grep "Training completed" logs/sft_geo.log`
-
-### Step 3 — Merge LoRA into Full Model (approximately 10 minutes)
-
-Fuses the LoRA adapter weights into the full model for GRPO training.
-
-```bash
-screen -S merge_geo
-conda activate dlcv_vghpm
-cd <PATH_TO>/FlightGPT_GeoPrior/
-bash merge_sft_geo.sh 2>&1 | tee logs/merge_geo.log
-```
-
-Verify merge completed successfully:
-
-```bash
-ls -lh saves/sft_geo_merged/
-# Should show multiple .safetensors files totalling ~16GB
-```
-
-### Step 4 — GRPO Training (approximately 25-40 hours)
-
-> **IMPORTANT:** Only run after Step 3 completes and `saves/sft_geo_merged/` exists.
-> GPU must be completely free. Kill any running processes first:
-
-```bash
-kill $(nvidia-smi --query-compute-apps=pid --format=csv,noheader) 2>/dev/null
-sleep 3
-nvidia-smi  # verify no processes shown
-```
-
-Then start GRPO:
-
-```bash
-screen -S grpo_geo
-conda activate dlcv_vghpm
-cd <PATH_TO>/FlightGPT_GeoPrior/
-bash run_grpo_geo.sh 2>&1 | tee logs/grpo_geo.log
-```
-
-Detach: `Ctrl+A` then `D`
-
-Monitor progress:
-
-```bash
-tail -f logs/grpo_geo.log
-tail -f logs/debug_FlightGPT-GeoPrior-GRPO.txt
-```
-
-Expected output: `saves/grpo_geo/` (final trained model)
-
-### Step 5 — Start vLLM Server with the Trained Model
-
-> **IMPORTANT:** GPU must be free before starting. Kill any training processes first:
-
-```bash
-kill $(nvidia-smi --query-compute-apps=pid --format=csv,noheader) 2>/dev/null
-sleep 3
-nvidia-smi  # verify GPU is free
-```
-
-Start the server:
-
-```bash
-screen -S vllm_geo
-conda activate dlcv_vghpm
-
-CUDA_VISIBLE_DEVICES=0 vllm serve \
-    <PATH_TO>/FlightGPT_GeoPrior/saves/grpo_geo \
-    --dtype auto \
-    --trust-remote-code \
-    --served-model-name qwen_2_5_vl_7b \
-    --host 0.0.0.0 \
-    --tensor-parallel-size 1 \
-    --port 8000 \
-    --max-model-len 32000 \
-    --gpu-memory-utilization 0.85 \
-    --enforce-eager
-```
-
-Wait until you see: `INFO: Application startup complete.`
-Detach: `Ctrl+A` then `D`
-
-Verify server is running:
-
-```bash
-curl http://0.0.0.0:8000/v1/models
-# Expected: {"data":[{"id":"qwen_2_5_vl_7b",...}]}
-```
-
-### Step 6 — Run Evaluation (approximately 24 hours)
-
-Open a new screen session:
-
-```bash
-screen -S eval_geo
-conda activate dlcv_vghpm
-cd <PATH_TO>/FlightGPT_GeoPrior/
-python eval_geo_trained.py 2>&1 | tee logs/eval_geo.log
-```
-
-Detach: `Ctrl+A` then `D`
-
-Monitor progress:
-
-```bash
-tail -f logs/eval_geo.log
-grep "result:" logs/eval_geo.log
-```
-
-Expected results:
-
-```
-easy result:   SR=0.2299  OSR=0.4241  NE=55.20m  SPL=0.2028
-medium result: SR=0.1993  OSR=0.3547  NE=69.25m  SPL=0.1839
-hard result:   SR=0.2256  OSR=0.3427  NE=77.68m  SPL=0.2130
-Overall:       SR=0.2190  OSR=0.3786  NE=66.14m  SPL=0.1997
-```
-
-### Useful Server Commands
-
-```bash
-screen -ls                    # list all running screen sessions
-screen -r sft_geo             # reattach to SFT session
-screen -r grpo_geo            # reattach to GRPO session
-screen -r eval_geo            # reattach to eval session
-nvidia-smi                    # check GPU memory usage
-
-# Kill all GPU processes if something gets stuck:
-kill $(nvidia-smi --query-compute-apps=pid --format=csv,noheader) 2>/dev/null
-```
-
----
-
-
-
-
-
-
-
-
-
-
-
-
-## PART 2 — Replicating on a New Machine
-
-### Hardware Requirements
-
-- GPU: NVIDIA RTX 4090 24GB minimum (1M pixel resolution needs ~20GB VRAM)
-- RAM: 32GB or more
-- Storage: 200GB free (model 16GB + training images 28GB + eval images 28GB + saves ~50GB)
-- OS: Ubuntu 22.04 or Ubuntu 24.04
-
-### Step 1 — Get the Code
-
-``` bash
-git clone https://github.com/Pendulumclock/FlightGPT
-cd FlightGPT
-unzip FlightGPT_GeoPrior_complete.zip -d ./
 cd FlightGPT_GeoPrior
-```
-
-### Step 2 — Set Up Conda Environment
-
-``` bash
 conda create -n dlcv_vghpm python=3.11
 conda activate dlcv_vghpm
-
 pip install -r requirements.txt
 pip install vllm==0.4.0
-pip install flash-attn --no-build-isolation
-pip install openai pillow tqdm
 ```
 
-# CRITICAL: do NOT install autoawq - it is incompatible with transformers 4.57.6
-
-
-# If it got installed accidentally: pip uninstall autoawq -y
-
-# Install LLaMA-Factory
+Then install the editable subpackages used by the training pipeline:
 
 ```bash
 cd LLaMA-Factory
 pip install -e ".[torch,metrics]"
-cd ..
-```
-
-# Install open-r1-multimodal
-
-```bash
-cd open-r1-multimodal
+cd ../open-r1-multimodal
 pip install -e .
 cd ..
 ```
 
-### Step 3 — Download FlightGPT Model Weights (approximately 16GB)
+## Required Assets
+
+Before training or evaluation, you will need:
+
+1. Base FlightGPT model weights in `FlightGPT_GeoPrior/model_weight/`
+2. CityNav map imagery in `FlightGPT_GeoPrior/R1PhotoData/`
+3. Writeable output directories such as `FlightGPT_GeoPrior/logs/` and `FlightGPT_GeoPrior/saves/`
+
+The code also assumes the SFT dataset file:
+
+- `FlightGPT_GeoPrior/LLaMA-Factory/data/vghpm_sft_v4_geo.json`
+
+## Hardcoded Paths You Must Patch
+
+On a new machine, update the absolute `/home/priyanka/.../FlightGPT_GeoPrior` paths in these files before running anything:
+
+- `FlightGPT_GeoPrior/run_sft_geo.sh`
+- `FlightGPT_GeoPrior/merge_sft_geo.sh`
+- `FlightGPT_GeoPrior/run_grpo_geo.sh`
+- `FlightGPT_GeoPrior/LLaMA-Factory/examples/train_lora/sft_geo.yaml`
+- `FlightGPT_GeoPrior/LLaMA-Factory/examples/merge_lora/sft_geo_merge.yaml`
+- `FlightGPT_GeoPrior/open-r1-multimodal/src/open_r1/grpo_jsonl_citynav_geo.py`
+
+One simple approach:
 
 ```bash
-pip install huggingface_hub
-python -c "
-from huggingface_hub import snapshot_download
-snapshot_download(
-    repo_id='Pendulumclock/FlightGPT',
-    local_dir='./model_weight',
-    ignore_patterns=['*.md']
-)
-"
-```
-
-### Step 4 — Download Training Map Images (approximately 28GB)
-
-The GRPO training script needs satellite map images in R1PhotoData/.
-Follow download instructions at: https://github.com/water-cookie/citynav
-Place all downloaded block folders inside R1PhotoData/
-
-mkdir -p R1PhotoData
-# e.g. R1PhotoData/birmingham_block_1_20250423.../map_0....jpg
-
-### Step 5 — Update Hardcoded Paths
-
-All shell scripts and configs have paths hardcoded to our server.
-Update them to match your machine:
-
-``` bash 
+cd FlightGPT_GeoPrior
 MYPATH=$(pwd)
 
 sed -i "s|/home/priyanka/GROUP_1_DLCV/Flight_GPT/FlightGPT_GeoPrior|$MYPATH|g" run_sft_geo.sh
@@ -363,64 +147,115 @@ sed -i "s|/home/priyanka/GROUP_1_DLCV/Flight_GPT/FlightGPT_GeoPrior|$MYPATH|g" r
 sed -i "s|/home/priyanka/GROUP_1_DLCV/Flight_GPT/FlightGPT_GeoPrior|$MYPATH|g" LLaMA-Factory/examples/train_lora/sft_geo.yaml
 sed -i "s|/home/priyanka/GROUP_1_DLCV/Flight_GPT/FlightGPT_GeoPrior|$MYPATH|g" LLaMA-Factory/examples/merge_lora/sft_geo_merge.yaml
 sed -i "s|/home/priyanka/GROUP_1_DLCV/Flight_GPT/FlightGPT_GeoPrior|$MYPATH|g" open-r1-multimodal/src/open_r1/grpo_jsonl_citynav_geo.py
-
-echo "Paths updated to: $MYPATH"
 ```
 
-### Step 6 — Update Image Paths in SFT Training Data
+If the SFT JSON still points to old image paths, rewrite those paths too.
 
-The SFT data has image paths pointing to our server. Update to your machine:
+## Training Workflow
 
-``` bash
-python3 -c "
-import json, os
-data = json.load(open('LLaMA-Factory/data/vghpm_sft_v4_geo.json'))
-old = '/home/priyanka/GROUP_1_DLCV/Flight_GPT/VG_HPM/data/training_data/images'
-new = os.path.join(os.getcwd(), 'data/training_data/images')
-for s in data:
-    s['images'] = [img.replace(old, new) for img in s.get('images', [])]
-json.dump(data, open('LLaMA-Factory/data/vghpm_sft_v4_geo.json', 'w'), ensure_ascii=True)
-print('Updated', len(data), 'samples. New path:', new)
-"
+All commands below assume you are inside `FlightGPT_GeoPrior/` with the correct Conda environment active.
+
+### 1. SFT
+
+```bash
+bash run_sft_geo.sh
 ```
 
-### Step 7 — Create Required Directories
+Expected output:
 
-``` bash
-mkdir -p logs saves
+- `saves/sft_geo/`
+
+### 2. Merge LoRA Adapter
+
+```bash
+bash merge_sft_geo.sh
 ```
 
-### Step 8 — Run Training and Evaluation
+Expected output:
 
-Follow Steps 2 through 6 from PART 1 exactly.
-Replace the server path in the vLLM serve command with your own path:
+- `saves/sft_geo_merged/`
+
+### 3. GRPO
+
+Free the GPU first if needed, then run:
+
+```bash
+bash run_grpo_geo.sh
+```
+
+Expected output:
+
+- `saves/grpo_geo/`
+
+## Serving the Trained Model
+
+Evaluation scripts call a vLLM-compatible OpenAI endpoint. Start a server after GRPO training:
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 vllm serve ./saves/grpo_geo \
-    --dtype auto \
-    --trust-remote-code \
-    --served-model-name qwen_2_5_vl_7b \
-    --host 0.0.0.0 \
-    --tensor-parallel-size 1 \
-    --port 8000 \
-    --max-model-len 32000 \
-    --gpu-memory-utilization 0.85 \
-    --enforce-eager
+  --dtype auto \
+  --trust-remote-code \
+  --served-model-name qwen_2_5_vl_7b \
+  --host 0.0.0.0 \
+  --tensor-parallel-size 1 \
+  --port 8000 \
+  --max-model-len 32000 \
+  --gpu-memory-utilization 0.85 \
+  --enforce-eager
 ```
 
----
+Quick check:
 
-## Troubleshooting
+```bash
+curl http://127.0.0.1:8000/v1/models
+```
 
-| Problem | Solution |
-|---|---|
-| OOM error during SFT or GRPO | Kill all GPU processes first: `kill $(nvidia-smi --query-compute-apps=pid --format=csv,noheader)` |
-| `autoawq` ImportError | `pip uninstall autoawq -y` |
-| Cannot find valid samples | Check `dataset_info.json` has `system_tag: system` for `vghpm_sft_v4_geo` |
-| GRPO fails to load model | Check `saves/sft_geo_merged/` exists: `ls -lh saves/sft_geo_merged/` |
-| vLLM connection refused | vLLM not running — repeat Step 5 |
-| Eval seems stuck | Normal — each episode takes 15–18s. Check: `tail -f logs/eval_geo.log` |
-| `ModuleNotFoundError` | Run `conda activate dlcv_vghpm` |
-| FlashAttention-2 not installed | Normal warning — falls back to torch SDPA, no impact on results |
-| SFT drops all samples | Check `dataset_info.json` has `system_tag` entry for the geo dataset |
-| GRPO OOM after SFT finished | vLLM or SFT process still on GPU — kill all and restart Step 4 |
+## Evaluation and Demo
+
+Full evaluation:
+
+```bash
+python eval_geo_trained.py
+```
+
+Live demo on random episodes:
+
+```bash
+python live_demo.py
+```
+
+Notes:
+
+- `eval_geo_trained.py` and `live_demo.py` expect the vLLM server on port `8000`
+- both scripts currently use `http://0.0.0.0:8000/v1` internally
+- evaluation is slow; the original project notes estimate about 24 hours for the full run
+
+## Practical Caveats
+
+- VRAM requirement is high. The repo notes assume an RTX 4090 24 GB or similar.
+- The scripts are tuned for a single-GPU workflow.
+- The repository mixes project code with large-data expectations, so cloning alone is not enough to reproduce training.
+- Some commands in the original workflow use `screen` for long-running jobs. That is operationally reasonable but not required.
+
+## Recommended Next Improvements
+
+If you want this repo to read like a strong public release, the next highest-value changes are:
+
+1. Remove hardcoded absolute paths from scripts and YAML files.
+2. Add a small bootstrap script that validates required assets before training.
+3. Document where to obtain each missing artifact and expected directory names.
+4. Add a minimal smoke test for prompt construction and landmark-prior lookup.
+5. Move server-specific instructions out of the main README into a separate operations note.
+
+## Citation
+
+If you use the underlying FlightGPT work, cite the original paper:
+
+```bibtex
+@article{cai2025flightgpt,
+  title={FlightGPT: Towards Generalizable and Interpretable UAV Vision-and-Language Navigation with Vision-Language Models},
+  author={Cai, Hengxing and Dong, Jinhan and Tan, Jingjun and Deng, Jingcheng and Li, Sihang and Gao, Zhifeng and Wang, Haidong and Su, Zicheng and Sumalee, Agachai and Zhong, Renxin},
+  journal={arXiv preprint arXiv:2505.12835},
+  year={2025}
+}
+```
